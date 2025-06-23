@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QRpeludo</title>
+
+    <!-- Meta redes sociales -->
+    <meta property="og:image" content="https://4tsix0yujj.ufs.sh/f/2vMRHqOYUHc0K5prXUEjR7oilQcqGuVyEA8Sm1pf4v95nLIB" />
+    <meta property="og:image:alt" content="Imagen del proyecto" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://4tsix0yujj.ufs.sh/f/2vMRHqOYUHc0K5prXUEjR7oilQcqGuVyEA8Sm1pf4v95nLIB" />
+
+    <!-- TailwindCSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Firebase (modular SDK) -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+      import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+      import React, { useState, useEffect } from "https://cdn.skypack.dev/react";
+      import ReactDOM from "https://cdn.skypack.dev/react-dom";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyEj5qY9J_J8JzP_1r0JdOj7YH0e-9JKd7A",
+        authDomain: "qrpeludo.firebaseapp.com",
+        projectId: "qrpeludo",
+        storageBucket: "qrpeludo.appspot.com",
+        messagingSenderId: "1234567890",
+        appId: "1:1234567890:web:abc123"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+
+      const App = () => {
+        const [pets, setPets] = useState([]);
+        const [currentPet, setCurrentPet] = useState(null);
+        const [showForm, setShowForm] = useState(false);
+        const [showModal, setShowModal] = useState(false);
+        const [lastSavedPet, setLastSavedPet] = useState(null);
+
+        useEffect(() => {
+          const unsub = onSnapshot(collection(db, "pets"), (snapshot) => {
+            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setPets(data);
+          });
+          return () => unsub();
+        }, []);
+
+        const handleSavePet = async (pet) => {
+          try {
+            if (pet.id) {
+              const petRef = doc(db, "pets", pet.id);
+              await updateDoc(petRef, pet);
+            } else {
+              const docRef = await addDoc(collection(db, "pets"), pet);
+              pet.id = docRef.id;
+            }
+            setLastSavedPet(pet);
+            setShowModal(true);
+            setShowForm(false);
+            setCurrentPet(null);
+          } catch (error) {
+            console.error("Error guardando mascota:", error);
+          }
+        };
+
+        const handleDeletePet = async (id) => {
+          try {
+            await deleteDoc(doc(db, "pets", id));
+          } catch (error) {
+            console.error("Error eliminando mascota:", error);
+          }
+        };
+
+        const handleEditPet = (pet) => {
+          setCurrentPet(pet);
+          setShowForm(true);
+        };
+
+        const handleAddPet = () => {
+          setCurrentPet(null);
+          setShowForm(true);
+        };
+
+        return (
+          React.createElement('div', { className: "max-w-6xl mx-auto py-10 px-4" },
+            React.createElement('header', { className: "mb-10 text-center" },
+              React.createElement('h1', { className: "text-5xl font-extrabold text-gray-800 drop-shadow-md mb-3" }, "🐾 QRpeludo"),
+              React.createElement('p', { className: "text-lg text-gray-600" }, "Registra, protege y encuentra a tus mascotas con un clic."),
+              React.createElement('button', {
+                onClick: handleAddPet,
+                className: "mt-6 bg-blue-600 text-white px-6 py-3 rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+              }, "➕ Agregar Mascota")
+            ),
+            React.createElement('div', { className: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" },
+              pets.map(pet =>
+                React.createElement('div', { key: pet.id, className: "bg-white rounded-2xl shadow-lg hover:shadow-2xl p-6 transform hover:-translate-y-1 transition duration-300" },
+                  React.createElement('img', { src: pet.photo || 'https://via.placeholder.com/300', alt: pet.name, className: "w-full h-48 object-cover rounded-xl mb-4 border" }),
+                  React.createElement('h3', { className: "text-2xl font-bold text-gray-800 mb-2" }, pet.name),
+                  React.createElement('p', { className: "text-gray-600" }, React.createElement('strong', null, "Dueño:"), " ", pet.ownerName),
+                  React.createElement('p', { className: "text-gray-600" }, React.createElement('strong', null, "Dirección:"), " ", pet.address),
+                  React.createElement('p', { className: "text-gray-600 mb-3" }, React.createElement('strong', null, "Teléfono:"), " ", pet.phone),
+                  React.createElement('div', { className: "flex justify-between" },
+                    React.createElement('button', {
+                      onClick: () => handleEditPet(pet),
+                      className: "bg-yellow-500 text-white px-4 py-2 rounded-lg shadow hover:bg-yellow-600"
+                    }, "Editar"),
+                    React.createElement('button', {
+                      onClick: () => handleDeletePet(pet.id),
+                      className: "bg-red-600 text-white px-4 py-2 rounded-lg shadow hover:bg-red-700"
+                    }, "Eliminar")
+                  )
+                )
+              )
+            ),
+            showForm && React.createElement(PetForm, { currentPet, onSave: handleSavePet, onCancel: () => setShowForm(false) }),
+            showModal && lastSavedPet && React.createElement('div', { className: "fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 backdrop-blur-sm" },
+              React.createElement('div', { className: "bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md" },
+                React.createElement('h2', { className: "text-2xl font-bold text-center mb-4" }, "Mascota guardada"),
+                React.createElement('img', { src: lastSavedPet.photo || 'https://via.placeholder.com/300', alt: lastSavedPet.name, className: "w-full h-48 object-cover rounded-xl mb-4" }),
+                React.createElement('p', null, React.createElement('strong', null, "Nombre:"), " ", lastSavedPet.name),
+                React.createElement('p', null, React.createElement('strong', null, "Dueño:"), " ", lastSavedPet.ownerName),
+                React.createElement('p', null, React.createElement('strong', null, "Dirección:"), " ", lastSavedPet.address),
+                React.createElement('p', null, React.createElement('strong', null, "Teléfono:"), " ", lastSavedPet.phone),
+                React.createElement('p', { className: "mt-4 text-center text-blue-600" },
+                  React.createElement('a', {
+                    href: `${location.origin}/#${lastSavedPet.id}`,
+                    target: "_blank",
+                    className: "underline"
+                  }, "Ver esta mascota en la web")
+                ),
+                React.createElement('div', { className: "flex justify-center mt-6" },
+                  React.createElement('button', {
+                    onClick: () => setShowModal(false),
+                    className: "bg-blue-600 text-white px-6 py-2 rounded-xl hover:bg-blue-700"
+                  }, "Cerrar")
+                )
+              )
+            )
+          )
+        );
+      };
+
+      const PetForm = ({ currentPet, onSave, onCancel }) => {
+        const [pet, setPet] = useState(currentPet || {
+          name: '', ownerName: '', address: '', phone: '', photo: ''
+        });
+
+        const handleChange = (e) => {
+          const { name, value } = e.target;
+          setPet(prev => ({ ...prev, [name]: value }));
+        };
+
+        const handlePhotoUpload = (e) => {
+          const file = e.target.files[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              setPet(prev => ({ ...prev, photo: reader.result }));
+            };
+            reader.readAsDataURL(file);
+          }
+        };
+
+        const handleSubmit = (e) => {
+          e.preventDefault();
+          onSave({ ...pet });
+        };
+
+        return (
+          React.createElement('div', { className: "fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 backdrop-blur-sm" },
+            React.createElement('form', { onSubmit: handleSubmit, className: "bg-white p-8 rounded-2xl shadow-2xl w-full max-w-lg" },
+              React.createElement('h2', { className: "text-3xl font-bold text-center text-gray-800 mb-6" }, pet.id ? 'Editar Mascota' : 'Nueva Mascota'),
+              ['name', 'ownerName', 'address', 'phone'].map(field => (
+                React.createElement('input', {
+                  key: field,
+                  name: field,
+                  value: pet[field],
+                  onChange: handleChange,
+                  placeholder: field.charAt(0).toUpperCase() + field.slice(1),
+                  className: "block w-full mb-4 px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500",
+                  required: true
+                })
+              )),
+              React.createElement('input', {
+                type: "file",
+                accept: "image/*",
+                onChange: handlePhotoUpload,
+                className: "mb-4"
+              }),
+              React.createElement('div', { className: "flex justify-end gap-3" },
+                React.createElement('button', {
+                  type: "button",
+                  onClick: onCancel,
+                  className: "bg-gray-300 text-gray-800 px-5 py-2 rounded-xl shadow hover:bg-gray-400"
+                }, "Cancelar"),
+                React.createElement('button', {
+                  type: "submit",
+                  className: "bg-blue-600 text-white px-5 py-2 rounded-xl shadow hover:bg-blue-700"
+                }, "Guardar")
+              )
+            )
+          )
+        );
+      };
+
+      ReactDOM.render(React.createElement(App), document.getElementById("root"));
+    </script>
+  </head>
+  <body class="bg-gradient-to-br from-purple-100 to-blue-100 min-h-screen font-sans">
+    <div id="root"></div>
+  </body>
+</html>
